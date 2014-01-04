@@ -28,10 +28,10 @@ typedef struct {
 
 	git_merge_tree_opts merge_tree_opts;
 	git_checkout_options checkout_opts;
-} git_revert_opts;
+} git_revert_options;
 
-#define GIT_REVERT_OPTS_VERSION 1
-#define GIT_REVERT_OPTS_INIT {GIT_REVERT_OPTS_VERSION, 0, GIT_MERGE_TREE_OPTS_INIT, GIT_CHECKOUT_OPTIONS_INIT}
+#define GIT_REVERT_OPTIONS_VERSION 1
+#define GIT_REVERT_OPTIONS_INIT {GIT_REVERT_OPTIONS_VERSION, 0, GIT_MERGE_TREE_OPTS_INIT, GIT_CHECKOUT_OPTIONS_INIT}
 
 /**
  * Reverts the given commit against the given "our" commit, producing an
@@ -67,7 +67,7 @@ int git_revert_commit(
 GIT_EXTERN(int) git_revert(
 	git_repository *repo,
 	git_commit *commit,
-	const git_revert_opts *given_opts);
+	const git_revert_options *given_opts);
 
 /** @} */
 GIT_END_DECL

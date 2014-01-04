@@ -305,7 +305,7 @@ on_error:
 static bool should_checkout(
 	git_repository *repo,
 	bool is_bare,
-	const git_checkout_opts *opts)
+	const git_checkout_options *opts)
 {
 	if (is_bare)
 		return false;
@@ -319,7 +319,7 @@ static bool should_checkout(
 	return !git_repository_head_unborn(repo);
 }
 
-int git_clone_into(git_repository *repo, git_remote *remote, const git_checkout_opts *co_opts, const char *branch)
+int git_clone_into(git_repository *repo, git_remote *remote, const git_checkout_options *co_opts, const char *branch)
 {
 	int error = 0, old_fetchhead;
 	git_strarray refspecs;

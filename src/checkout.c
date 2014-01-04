@@ -47,7 +47,7 @@ enum {
 typedef struct {
 	git_repository *repo;
 	git_diff *diff;
-	git_checkout_opts opts;
+	git_checkout_options opts;
 	bool opts_free_baseline;
 	char *pfx;
 	git_index *index;
@@ -1088,7 +1088,7 @@ static int blob_content_to_file(
 	const char *path,
 	const char * hint_path,
 	mode_t entry_filemode,
-	git_checkout_opts *opts)
+	git_checkout_options *opts)
 {
 	int error = 0;
 	mode_t file_mode = opts->file_mode ? opts->file_mode : entry_filemode;
@@ -1788,7 +1788,7 @@ static void checkout_data_clear(checkout_data *data)
 static int checkout_data_init(
 	checkout_data *data,
 	git_iterator *target,
-	const git_checkout_opts *proposed)
+	const git_checkout_options *proposed)
 {
 	int error = 0;
 	git_repository *repo = git_iterator_owner(target);
@@ -1807,12 +1807,12 @@ static int checkout_data_init(
 	data->repo = repo;
 
 	GITERR_CHECK_VERSION(
-		proposed, GIT_CHECKOUT_OPTS_VERSION, "git_checkout_opts");
+		proposed, GIT_CHECKOUT_OPTIONS_VERSION, "git_checkout_options");
 
 	if (!proposed)
-		GIT_INIT_STRUCTURE(&data->opts, GIT_CHECKOUT_OPTS_VERSION);
+		GIT_INIT_STRUCTURE(&data->opts, GIT_CHECKOUT_OPTIONS_VERSION);
 	else
-		memmove(&data->opts, proposed, sizeof(git_checkout_opts));
+		memmove(&data->opts, proposed, sizeof(git_checkout_options));
 
 	if (!data->opts.target_directory)
 		data->opts.target_directory = git_repository_workdir(repo);
@@ -1909,7 +1909,7 @@ cleanup:
 
 int git_checkout_iterator(
 	git_iterator *target,
-	const git_checkout_opts *opts)
+	const git_checkout_options *opts)
 {
 	int error = 0;
 	git_iterator *baseline = NULL, *workdir = NULL;
@@ -2015,7 +2015,7 @@ cleanup:
 int git_checkout_index(
 	git_repository *repo,
 	git_index *index,
-	const git_checkout_opts *opts)
+	const git_checkout_options *opts)
 {
 	int error;
 	git_iterator *index_i;
@@ -2050,7 +2050,7 @@ int git_checkout_index(
 int git_checkout_tree(
 	git_repository *repo,
 	const git_object *treeish,
-	const git_checkout_opts *opts)
+	const git_checkout_options *opts)
 {
 	int error;
 	git_tree *tree = NULL;
@@ -2098,7 +2098,7 @@ int git_checkout_tree(
 
 int git_checkout_head(
 	git_repository *repo,
-	const git_checkout_opts *opts)
+	const git_checkout_options *opts)
 {
 	assert(repo);
 	return git_checkout_tree(repo, NULL, opts);

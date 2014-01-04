@@ -219,12 +219,12 @@ typedef void (*git_checkout_progress_cb)(
 /**
  * Checkout options structure
  *
- * Zero out for defaults.  Initialize with `GIT_CHECKOUT_OPTS_INIT` macro to
+ * Zero out for defaults.  Initialize with `GIT_CHECKOUT_OPTIONS_INIT` macro to
  * correctly set the `version` field.  E.g.
  *
- *		git_checkout_opts opts = GIT_CHECKOUT_OPTS_INIT;
+ *		git_checkout_options opts = GIT_CHECKOUT_OPTIONS_INIT;
  */
-typedef struct git_checkout_opts {
+typedef struct git_checkout_options {
 	unsigned int version;
 
 	unsigned int checkout_strategy; /** default will be a dry run */
@@ -254,10 +254,10 @@ typedef struct git_checkout_opts {
 
 	const char *our_label; /** the name of the "our" side of conflicts */
 	const char *their_label; /** the name of the "their" side of conflicts */
-} git_checkout_opts;
+} git_checkout_options;
 
-#define GIT_CHECKOUT_OPTS_VERSION 1
-#define GIT_CHECKOUT_OPTS_INIT {GIT_CHECKOUT_OPTS_VERSION}
+#define GIT_CHECKOUT_OPTIONS_VERSION 1
+#define GIT_CHECKOUT_OPTIONS_INIT {GIT_CHECKOUT_OPTIONS_VERSION}
 
 /**
  * Updates files in the index and the working tree to match the content of
@@ -271,7 +271,7 @@ typedef struct git_checkout_opts {
  */
 GIT_EXTERN(int) git_checkout_head(
 	git_repository *repo,
-	const git_checkout_opts *opts);
+	const git_checkout_options *opts);
 
 /**
  * Updates files in the working tree to match the content of the index.
@@ -285,7 +285,7 @@ GIT_EXTERN(int) git_checkout_head(
 GIT_EXTERN(int) git_checkout_index(
 	git_repository *repo,
 	git_index *index,
-	const git_checkout_opts *opts);
+	const git_checkout_options *opts);
 
 /**
  * Updates files in the index and working tree to match the content of the
@@ -301,7 +301,7 @@ GIT_EXTERN(int) git_checkout_index(
 GIT_EXTERN(int) git_checkout_tree(
 	git_repository *repo,
 	const git_object *treeish,
-	const git_checkout_opts *opts);
+	const git_checkout_options *opts);
 
 /** @} */
 GIT_END_DECL

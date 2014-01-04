@@ -81,11 +81,11 @@ typedef struct {
 	git_merge_flags_t merge_flags;
 	git_merge_tree_opts merge_tree_opts;
 
-	git_checkout_opts checkout_opts;
+	git_checkout_options checkout_opts;
 } git_merge_opts;
 
 #define GIT_MERGE_OPTS_VERSION 1
-#define GIT_MERGE_OPTS_INIT {GIT_MERGE_OPTS_VERSION, 0, GIT_MERGE_TREE_OPTS_INIT, GIT_CHECKOUT_OPTS_INIT}
+#define GIT_MERGE_OPTS_INIT {GIT_MERGE_OPTS_VERSION, 0, GIT_MERGE_TREE_OPTS_INIT, GIT_CHECKOUT_OPTIONS_INIT}
 
 
 /**

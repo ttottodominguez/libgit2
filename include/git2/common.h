@@ -138,7 +138,8 @@ typedef enum {
 	GIT_OPT_ENABLE_CACHING,
 	GIT_OPT_GET_CACHED_MEMORY,
 	GIT_OPT_GET_TEMPLATE_PATH,
-	GIT_OPT_SET_TEMPLATE_PATH
+	GIT_OPT_SET_TEMPLATE_PATH,
+	GIT_OPT_SET_WARNING_CALLBACK,
 } git_libgit2_opt_t;
 
 /**
@@ -223,6 +224,10 @@ typedef enum {
  *		> Set the default template path.
  *		>
  *		> - `path` directory of template.
+ *
+ *	* opts(GIT_OPT_SET_WARNING_CALLBACK, git_warning_callback cb, void *payload)
+ *
+ *		> Set callback for warnings (i.e. recoverable data problems)
  *
  * @param option Option key
  * @param ... value to set the option

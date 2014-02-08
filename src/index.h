@@ -62,4 +62,16 @@ extern int git_index__find(
 
 extern void git_index__set_ignore_case(git_index *index, bool ignore_case);
 
+/* Copy the current entries vector *and* increment the index refcount.
+ * Call `git_index__release_snapshot` when done.
+ */
+extern int git_index__snapshot(git_vector *entries, git_index *index);
+extern void git_index__release_snapshot(git_index *index);
+
+/* Allow searching in a snapshot; entries must already be sorted! */
+extern int git_index__find_in_entries(
+	size_t *at_pos,
+	git_vector *entries, git_vector_cmp entry_cmp,
+	const char *path, size_t path_len, int stage);
+
 #endif

@@ -1399,10 +1399,9 @@ static int load_submodule_config(git_repository *repo)
 	/* Submodule data is kept in a hashtable keyed by both name and path.
 	 * These are usually the same, but that is not guaranteed.
 	 */
-	if (!repo->submodules) {
-		repo->submodules = git_strmap_alloc();
-		GITERR_CHECK_ALLOC(repo->submodules);
-	}
+	if (!repo->submodules &&
+		(error = git_strmap_alloc(&repo->submodules)) < 0)
+		goto cleanup;
 
 	/* add submodule information from index */
 

@@ -8,6 +8,9 @@
 #include "common.h"
 #include "repository.h"
 #include "merge_file.h"
+#include "posix.h"
+#include "fileops.h"
+#include "index.h"
 
 #include "git2/repository.h"
 #include "git2/object.h"
@@ -63,7 +66,45 @@ GIT_INLINE(int) merge_file_best_mode(
 	return 0;
 }
 
-int git_merge_file_input_from_index_entry(
+int git_merge_file__input_from_file(
+	git_merge_file_input *input,
+	const char *path)
+{
+	git_buf data_buf = GIT_BUF_INIT;
+	struct stat st;
+	int error = 0;
+
+	if ((error = p_stat(path, &st)) < 0) {
+		giterr_set(GITERR_MERGE, "Could not read '%s'", path);
+		goto done;
+	}
+
+	if ((error = git_futils_readbuffer(&data_buf, path)) < 0)
+		goto done;
+
+	if ((input->path = git__strdup(path)) == NULL) {
+		error = -1;
+		goto done;
+	}
+
+	input->mode = git_index__create_mode(st.st_mode);
+
+	input->mmfile.size = data_buf.size;
+	input->mmfile.ptr = data_buf.ptr;
+
+	git_buf_detach(&data_buf);
+
+	if (input->label == NULL)
+		input->label = input->path;
+
+done:
+	if (error)
+		git_buf_free(&data_buf);
+
+	return error;
+}
+
+int git_merge_file__input_from_index_entry(
 	git_merge_file_input *input,
 	git_repository *repo,
 	const git_index_entry *entry)
@@ -80,13 +121,17 @@ int git_merge_file_input_from_index_entry(
 		(error = git_odb_read(&input->odb_object, odb, &entry->id)) < 0)
 		goto done;
 
+	if ((input->path = git__strdup(entry->path)) == NULL) {
+		error = -1;
+		goto done;
+	}
+
 	input->mode = entry->mode;
-	input->path = git__strdup(entry->path);
 	input->mmfile.size = git_odb_object_size(input->odb_object);
 	input->mmfile.ptr = (char *)git_odb_object_data(input->odb_object);
 
 	if (input->label == NULL)
-		input->label = entry->path;
+		input->label = input->path;
 
 done:
 	git_odb_free(odb);
@@ -94,7 +139,7 @@ done:
 	return error;
 }
 
-int git_merge_file_input_from_diff_file(
+int git_merge_file__input_from_diff_file(
 	git_merge_file_input *input,
 	git_repository *repo,
 	const git_diff_file *file)
@@ -111,13 +156,17 @@ int git_merge_file_input_from_diff_file(
 		(error = git_odb_read(&input->odb_object, odb, &file->id)) < 0)
 		goto done;
 
+	if ((input->path = git__strdup(file->path)) == NULL) {
+		error = -1;
+		goto done;
+	}
+
 	input->mode = file->mode;
-	input->path = git__strdup(file->path);
 	input->mmfile.size = git_odb_object_size(input->odb_object);
 	input->mmfile.ptr = (char *)git_odb_object_data(input->odb_object);
 
 	if (input->label == NULL)
-		input->label = file->path;
+		input->label = input->path;
 
 done:
 	git_odb_free(odb);
@@ -125,12 +174,13 @@ done:
 	return error;
 }
 
-int git_merge_files(
+int git_merge_file__from_inputs(
 	git_merge_file_result *out,
 	git_merge_file_input *ancestor,
 	git_merge_file_input *ours,
 	git_merge_file_input *theirs,
-	git_merge_file_options *opts)
+	git_merge_file_favor_t favor,
+	git_merge_file_flags_t flags)
 {
 	xmparam_t xmparam;
 	mmbuffer_t mmbuffer;
@@ -152,18 +202,17 @@ int git_merge_files(
 	out->path = merge_file_best_path(ancestor, ours, theirs);
 	out->mode = merge_file_best_mode(ancestor, ours, theirs);
 
-	if (opts && opts->favor == GIT_MERGE_FILE_FAVOR_OURS)
+	if (favor == GIT_MERGE_FILE_FAVOR_OURS)
 		xmparam.favor = XDL_MERGE_FAVOR_OURS;
-	else if (opts && opts->favor == GIT_MERGE_FILE_FAVOR_THEIRS)
+	else if (favor == GIT_MERGE_FILE_FAVOR_THEIRS)
 		xmparam.favor = XDL_MERGE_FAVOR_THEIRS;
-	else if (opts && opts->favor == GIT_MERGE_FILE_FAVOR_UNION)
+	else if (favor == GIT_MERGE_FILE_FAVOR_UNION)
 		xmparam.favor = XDL_MERGE_FAVOR_UNION;
 
-	xmparam.level = 
-		(opts && (opts->flags & GIT_MERGE_FILE_SIMPLIFY_ALNUM)) ?
+	xmparam.level = (flags & GIT_MERGE_FILE_SIMPLIFY_ALNUM) ?
 		XDL_MERGE_ZEALOUS_ALNUM : XDL_MERGE_ZEALOUS;
 
-	if (opts && opts->style == GIT_MERGE_FILE_STYLE_DIFF3)
+	if (flags & GIT_MERGE_FILE_STYLE_DIFF3)
 		xmparam.style = XDL_MERGE_DIFF3;
 
 	if ((xdl_result = xdl_merge(&ancestor->mmfile, &ours->mmfile,
@@ -180,3 +229,105 @@ int git_merge_files(
 done:
 	return error;
 }
+
+int git_merge_file(
+	git_merge_file_result *result,
+	const char *ancestor_path,
+	const char *our_path,
+	const char *their_path,
+	const git_merge_file_options *opts)
+{
+	git_merge_file_input ancestor_input = {0},
+		our_input = {0},
+		their_input = {0};
+	git_merge_file_flags_t flags = GIT_MERGE_FILE_DEFAULT;
+	int error = 0;
+
+	if (opts) {
+		ancestor_input.label = opts->ancestor_label;
+		our_input.label = opts->our_label;
+		their_input.label = opts->their_label;
+
+		flags = opts->flags;
+	}
+
+	if ((error = git_merge_file__input_from_file(&ancestor_input, ancestor_path)) < 0 ||
+		(error = git_merge_file__input_from_file(&our_input, our_path)) < 0 ||
+		(error = git_merge_file__input_from_file(&their_input, their_path)) < 0)
+		goto done;
+
+	if ((error = git_merge_file__from_inputs(result, 
+		&ancestor_input,
+		&our_input,
+		&their_input,
+		GIT_MERGE_FILE_FAVOR_NORMAL,
+		flags)) < 0)
+		goto done;
+
+	if (result->path && (result->path = git__strdup(result->path)) == NULL)
+		error = -1;
+
+done:
+	git_merge_file__input_free(&ancestor_input);
+	git_merge_file__input_free(&our_input);
+	git_merge_file__input_free(&their_input);
+
+	return error;
+}
+
+int git_merge_file_from_index(
+	git_merge_file_result *result,
+	git_repository *repo,
+	const git_index_entry *ancestor,
+	const git_index_entry *ours,
+	const git_index_entry *theirs,
+	const git_merge_file_options *opts)
+{
+	git_merge_file_input ancestor_input = {0},
+		our_input = {0},
+		their_input = {0};
+	git_merge_file_flags_t flags = GIT_MERGE_FILE_DEFAULT;
+	int error = 0;
+
+	if ((error = git_merge_file__input_from_index_entry(&ancestor_input, repo, ancestor)) < 0 ||
+		(error = git_merge_file__input_from_index_entry(&our_input, repo, ours)) < 0 ||
+		(error = git_merge_file__input_from_index_entry(&their_input, repo, theirs)) < 0)
+		goto done;
+
+	if (opts) {
+		ancestor_input.label = opts->ancestor_label;
+		our_input.label = opts->our_label;
+		their_input.label = opts->their_label;
+
+		flags = opts->flags;
+	}
+
+	if ((error = git_merge_file__from_inputs(result, 
+		&ancestor_input,
+		&our_input,
+		&their_input,
+		GIT_MERGE_FILE_FAVOR_NORMAL,
+		flags)) < 0)
+		goto done;
+
+	if (result->path && (result->path = git__strdup(result->path)) == NULL)
+		error = -1;
+
+done:
+	git_merge_file__input_free(&ancestor_input);
+	git_merge_file__input_free(&our_input);
+	git_merge_file__input_free(&their_input);
+
+	return error;
+}
+
+void git_merge_file_result_free(git_merge_file_result *result)
+{
+	if (result == NULL)
+		return;
+
+	/* xdiff uses malloc() not git_malloc, so we use free(), not git_free() */
+	if (result->data != NULL)
+		free(result->data);
+}
+

@@ -1681,7 +1681,7 @@ static int checkout_write_merge(
 {
 	git_buf our_label = GIT_BUF_INIT, their_label = GIT_BUF_INIT,
 		path_suffixed = GIT_BUF_INIT, path_workdir = GIT_BUF_INIT;
-	git_merge_file_options merge_file_opts = GIT_MERGE_FILE_OPTIONS_INIT;
+	git_merge_file_flags_t merge_file_flags = GIT_MERGE_FILE_DEFAULT;
 	git_merge_file_input ancestor = GIT_MERGE_FILE_INPUT_INIT,
 		ours = GIT_MERGE_FILE_INPUT_INIT,
 		theirs = GIT_MERGE_FILE_INPUT_INIT;
@@ -1690,14 +1690,14 @@ static int checkout_write_merge(
 	int error = 0;
 
 	if (data->opts.checkout_strategy & GIT_CHECKOUT_CONFLICT_STYLE_DIFF3)
-		merge_file_opts.style = GIT_MERGE_FILE_STYLE_DIFF3;
+		merge_file_flags |= GIT_MERGE_FILE_STYLE_DIFF3;
 
 	if ((conflict->ancestor &&
-		(error = git_merge_file_input_from_index_entry(
+		(error = git_merge_file__input_from_index_entry(
 		&ancestor, data->repo, conflict->ancestor)) < 0) ||
-		(error = git_merge_file_input_from_index_entry(
+		(error = git_merge_file__input_from_index_entry(
 		&ours, data->repo, conflict->ours)) < 0 ||
-		(error = git_merge_file_input_from_index_entry(
+		(error = git_merge_file__input_from_index_entry(
 		&theirs, data->repo, conflict->theirs)) < 0)
 		goto done;
 
@@ -1721,7 +1721,8 @@ static int checkout_write_merge(
 		theirs.label = git_buf_cstr(&their_label);
 	}
 
-	if ((error = git_merge_files(&result, &ancestor, &ours, &theirs, &merge_file_opts)) < 0)
+	if ((error = git_merge_file__from_inputs(
+		&result, &ancestor, &ours, &theirs, 0, merge_file_flags)) < 0)
 		goto done;
 
 	if (result.path == NULL || result.mode == 0) {
@@ -1747,9 +1748,9 @@ done:
 	git_buf_free(&our_label);
 	git_buf_free(&their_label);
 
-	git_merge_file_input_free(&ancestor);
-	git_merge_file_input_free(&ours);
-	git_merge_file_input_free(&theirs);
+	git_merge_file__input_free(&ancestor);
+	git_merge_file__input_free(&ours);
+	git_merge_file__input_free(&theirs);
 	git_merge_file_result_free(&result);
 	git_buf_free(&path_workdir);
 	git_buf_free(&path_suffixed);
